@@ -1,0 +1,40 @@
+:root {
+  --brand:       #4f46e5;
+  --brand-dark:  #3730a3;
+  --brand-light: #eef2ff;
+}
+
+body {
+  background: #f5f6fa;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 99px; }
+
+/* Card utility */
+.card-fl {
+  background: #fff;
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.04);
+}
+
+/* Kanban */
+.kanban-wrap  { display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem; }
+.kanban-col   { flex: 0 0 260px; background: #f8f9fa; border-radius: 10px; padding: .75rem; }
+.kanban-card  {
+  background: #fff; border: 1px solid #e5e7eb;
+  border-radius: 8px; padding: .75rem; margin-bottom: .6rem;
+  cursor: pointer; transition: box-shadow .15s;
+  text-decoration: none; color: inherit; display: block;
+}
+.kanban-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+
+/* Thin progress */
+.progress-thin { height: 4px !important; border-radius: 99px; }
+
+/* Page heading */
+.page-heading { font-weight: 700; font-size: 1.25rem; color: #1e1b4b; margin-bottom: .25rem; }
