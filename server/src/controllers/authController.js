@@ -3,6 +3,7 @@ const jwt    = require('jsonwebtoken');
 const crypto = require('crypto');
 const prisma  = require('../lib/prisma');
 const { log } = require('../lib/activityLog');
+const { clearLoginLimit } = require('../middleware/rateLimit');
 
 // ── Login ─────────────────────────────────────────────────────────────────────
 const login = async (req, res) => {
@@ -27,6 +28,7 @@ const login = async (req, res) => {
     where: { id: user.id },
     data: { last_login: new Date(), failed_login_attempts: 0 }
   });
+  clearLoginLimit(req.ip, username);
   await log(user.id, 'login', 'User logged in.', 'users', user.id);
 
   const payload = { id: user.id, role: user.role?.role_name, employeeId: user.employee_id };

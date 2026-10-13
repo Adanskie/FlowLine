@@ -7,18 +7,20 @@ export default function EmployeeForm() {
   const nav = useNavigate();
   const [depts,     setDepts]     = useState([]);
   const [positions, setPositions] = useState([]);
+  const [teams,     setTeams]     = useState([]);
   const [roles,     setRoles]     = useState([{ role_id:1, role_name:'Administrator' },{ role_id:2, role_name:'Manager' },{ role_id:3, role_name:'Employee' }]);
   const [error,     setError]     = useState('');
   const [loading,   setLoading]   = useState(false);
   const [form, setForm] = useState({
     first_name:'', last_name:'', email:'', phone:'',
     department_id:'', position_id:'', employment_type:'', hire_date:'',
-    role_id:'', username:'', password:'',
+    role_id:'', username:'', password:'', team_id:'',
   });
 
   useEffect(() => {
     api.get('/departments').then(r => setDepts(r.data));
     api.get('/positions').then(r => setPositions(r.data));
+    api.get('/teams').then(r => setTeams(r.data));
   }, []);
 
   const f = (k, v) => setForm(p => ({ ...p, [k]: v }));
@@ -70,6 +72,16 @@ export default function EmployeeForm() {
                   <select className="form-select" required value={form.position_id} onChange={e => f('position_id', e.target.value)}>
                     <option value="">Select…</option>
                     {positions.map(p => <option key={p.position_id} value={p.position_id}>{p.position_name}</option>)}
+                  </select>
+                </Field>
+                <Field label="Team" col="col-md-6">
+                  <select className="form-select" value={form.team_id}
+                    onChange={e => f('team_id', e.target.value)}
+                    disabled={!form.department_id}>
+                    <option value="">None</option>
+                    {teams
+                      .filter(t => String(t.department_id) === String(form.department_id))
+                      .map(t => <option key={t.team_id} value={t.team_id}>{t.team_name}</option>)}
                   </select>
                 </Field>
               </div>

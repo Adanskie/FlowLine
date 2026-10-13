@@ -13,6 +13,7 @@ export default function EmployeeEdit() {
   const nav    = useNavigate();
   const [depts,     setDepts]     = useState([]);
   const [positions, setPositions] = useState([]);
+  const [teams,     setTeams]     = useState([]);
   const [error,     setError]     = useState('');
   const [loading,   setLoading]   = useState(false);
   const [form,      setForm]      = useState(null);
@@ -20,6 +21,7 @@ export default function EmployeeEdit() {
   useEffect(() => {
     api.get('/departments').then(r => setDepts(r.data));
     api.get('/positions').then(r => setPositions(r.data));
+    api.get('/teams').then(r => setTeams(r.data));
     api.get(`/employees/${id}`).then(r => {
       const e = r.data;
       setForm({
@@ -28,6 +30,7 @@ export default function EmployeeEdit() {
         employment_type: e.employment_type ?? '', hire_date: e.hire_date?.split('T')[0] ?? '',
         status: e.status, role_id: String(e.user?.role_id ?? ''),
         username: e.user?.username ?? '', password: '',
+        team_id: e.team_id ? String(e.team_id) : '',
       });
     });
   }, [id]);
@@ -91,6 +94,16 @@ export default function EmployeeEdit() {
                   <select className="form-select" required value={form.position_id} onChange={e => f('position_id', e.target.value)}>
                     <option value="">Select…</option>
                     {positions.map(p => <option key={p.position_id} value={p.position_id}>{p.position_name}</option>)}
+                  </select>
+                </Row>
+                <Row label="Team">
+                  <select className="form-select" value={form.team_id}
+                    onChange={e => f('team_id', e.target.value)}
+                    disabled={!form.department_id}>
+                    <option value="">None</option>
+                    {teams
+                      .filter(t => String(t.department_id) === String(form.department_id))
+                      .map(t => <option key={t.team_id} value={t.team_id}>{t.team_name}</option>)}
                   </select>
                 </Row>
               </div>

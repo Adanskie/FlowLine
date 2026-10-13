@@ -1,9 +1,13 @@
+import { useState } from 'react';
 import useFetch from '../../hooks/useFetch';
 import api from '../../api/axios';
 import Spinner from '../../components/ui/Spinner';
+import Alert from '../../components/ui/Alert';
+import downloadFile from '../../utils/downloadFile';
 
 export default function AdminFiles() {
   const { data: files, loading, refetch } = useFetch('/files');
+  const [dlError, setDlError] = useState('');
 
   const del = async (id, name) => {
     if (!confirm(`Delete "${name}"?`)) return;
@@ -14,6 +18,7 @@ export default function AdminFiles() {
   return (
     <>
       <div className="page-heading mb-4">File Repository</div>
+      <Alert type="danger" message={dlError} onClose={() => setDlError('')} />
       <div className="card border-0 shadow-sm">
         {loading ? <Spinner /> : (
           <div className="table-responsive">
@@ -30,7 +35,7 @@ export default function AdminFiles() {
                       <td className="text-muted">{f.uploadedBy?.employee ? `${f.uploadedBy.employee.first_name} ${f.uploadedBy.employee.last_name}` : f.uploadedBy?.username ?? '—'}</td>
                       <td className="text-muted">{new Date(f.uploaded_at).toLocaleDateString()}</td>
                       <td className="text-end">
-                        <a href={`/api/files/${f.attachment_id}/download`} className="btn btn-sm btn-outline-primary py-0 px-2 me-1"><i className="bi bi-download"></i></a>
+                        <button onClick={() => downloadFile(api, f.attachment_id, f.file_name, setDlError)} className="btn btn-sm btn-outline-primary py-0 px-2 me-1"><i className="bi bi-download"></i></button>
                         <button onClick={() => del(f.attachment_id, f.file_name)} className="btn btn-sm btn-outline-danger py-0 px-2"><i className="bi bi-trash"></i></button>
                       </td>
                     </tr>

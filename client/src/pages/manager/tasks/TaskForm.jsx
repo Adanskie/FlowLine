@@ -13,6 +13,7 @@ const DEFAULT_PRIORITIES = [
 export default function ManagerTaskForm() {
   const nav = useNavigate();
   const [employees, setEmployees] = useState([]);
+  const [teams,     setTeams]     = useState([]);
   const [error,     setError]     = useState('');
   const [loading,   setLoading]   = useState(false);
   const [form, setForm] = useState({
@@ -21,7 +22,10 @@ export default function ManagerTaskForm() {
     due_date: '', employee_ids: [],
   });
 
-  useEffect(() => { api.get('/employees').then(r => setEmployees(r.data)); }, []);
+  useEffect(() => {
+    api.get('/employees').then(r => setEmployees(r.data));
+    api.get('/teams').then(r => setTeams(r.data));
+  }, []);
 
   const submit = async e => {
     e.preventDefault();
@@ -43,7 +47,7 @@ export default function ManagerTaskForm() {
           <div className="card border-0 shadow-sm p-4">
             <Alert type="danger" message={error} onClose={() => setError('')} />
             <form onSubmit={submit}>
-              <TaskFormFields form={form} setForm={setForm} employees={employees} priorities={DEFAULT_PRIORITIES} />
+              <TaskFormFields form={form} setForm={setForm} employees={employees} priorities={DEFAULT_PRIORITIES} teams={teams} />
               <div className="d-flex justify-content-end gap-2 pt-2">
                 <button type="button" className="btn btn-light" onClick={() => nav(-1)}>Cancel</button>
                 <button type="submit" className="btn btn-primary" disabled={loading}>

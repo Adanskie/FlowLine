@@ -4,6 +4,7 @@ import api from '../../api/axios';
 import StageBadge from '../ui/StageBadge';
 import PriorityBadge from '../ui/PriorityBadge';
 import Alert from '../ui/Alert';
+import downloadFile from '../../utils/downloadFile';
 
 export default function TaskDetail({ task, stages = [], canManage = false, editPath, onRefresh }) {
   const nav = useNavigate();
@@ -240,9 +241,11 @@ export default function TaskDetail({ task, stages = [], canManage = false, editP
                 <i className="bi bi-file-earmark text-muted"></i>
                 <span>{a.file_name.length > 28 ? a.file_name.slice(0,28)+'…' : a.file_name}</span>
               </div>
-              <a href={`/api/files/${a.attachment_id}/download`} className="btn btn-sm btn-outline-secondary py-0 px-2">
+              <button
+                onClick={() => downloadFile(api, a.attachment_id, a.file_name, msg => flash('danger', msg))}
+                className="btn btn-sm btn-outline-secondary py-0 px-2">
                 <i className="bi bi-download"></i>
-              </a>
+              </button>
             </div>
           ))}
           <form onSubmit={uploadFile} className="d-flex gap-2 mt-2">

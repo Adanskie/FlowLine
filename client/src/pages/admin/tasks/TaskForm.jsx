@@ -8,12 +8,14 @@ export default function AdminTaskForm() {
   const nav = useNavigate();
   const [employees,  setEmployees]  = useState([]);
   const [priorities, setPriorities] = useState([]);
+  const [teams,      setTeams]      = useState([]);
   const [error,      setError]      = useState('');
   const [loading,    setLoading]    = useState(false);
   const [form, setForm] = useState({ task_title:'', task_description:'', priority_id:'', start_date:'', due_date:'', employee_ids:[] });
 
   useEffect(() => {
     api.get('/employees').then(r => setEmployees(r.data));
+    api.get('/teams').then(r => setTeams(r.data));
     api.get('/tasks').then(() => {}).catch(() => {});
     // Priorities come from tasks endpoint shape — fetch directly
     fetch('/api/tasks').then(() => {}).catch(() => {});
@@ -42,7 +44,7 @@ export default function AdminTaskForm() {
           <div className="card border-0 shadow-sm p-4">
             <Alert type="danger" message={error} onClose={() => setError('')} />
             <form onSubmit={submit}>
-              <TaskFormFields form={form} setForm={setForm} employees={employees} priorities={priorities} />
+              <TaskFormFields form={form} setForm={setForm} employees={employees} priorities={priorities} teams={teams} />
               <div className="d-flex justify-content-end gap-2 pt-2">
                 <button type="button" className="btn btn-light" onClick={() => nav(-1)}>Cancel</button>
                 <button type="submit" className="btn btn-primary" disabled={loading}>

@@ -20,6 +20,15 @@ router.get('/', async (req, res) => {
 router.get('/:id/download', async (req, res) => {
   const att = await prisma.attachment.findUnique({ where: { attachment_id: +req.params.id } });
   if (!att || att.is_deleted) return res.status(404).json({ error: 'File not found.' });
+
+  // Permission check: Employee may only download files on their assigned tasks.
+  if (req.user.role === 'Employee') {
+    const assigned = await prisma.taskAssignment.findFirst({
+      where: { task_id: att.task_id, employee_id: +req.user.employeeId },
+    });
+    if (!assigned) return res.status(403).json({ error: 'Access denied.' });
+  }
+
   const filePath = path.join(__dirname, '../../', att.file_path);
   if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File missing from disk.' });
   res.download(filePath, att.file_name);

@@ -2,12 +2,26 @@
  * Reusable task form fields used by both Admin and Manager create/edit pages.
  * Caller renders the <form> and submit button.
  */
-export default function TaskFormFields({ form, setForm, employees = [], priorities = [] }) {
+export default function TaskFormFields({ form, setForm, employees = [], priorities = [], teams = [] }) {
   const toggle = id => {
     const ids = form.employee_ids.includes(id)
       ? form.employee_ids.filter(e => e !== id)
       : [...form.employee_ids, id];
     setForm(p => ({ ...p, employee_ids: ids }));
+  };
+
+  const applyTeam = e => {
+    const teamId = +e.target.value;
+    if (!teamId) return;
+    const team = teams.find(t => t.team_id === teamId);
+    if (!team) return;
+    const memberIds = team.members
+      .map(m => m.employee_id)
+      .filter(id => employees.some(emp => emp.employee_id === id));
+    const merged = Array.from(new Set([...form.employee_ids, ...memberIds]));
+    setForm(p => ({ ...p, employee_ids: merged }));
+    // Reset the selector back to blank
+    e.target.value = '';
   };
 
   return (
@@ -29,6 +43,17 @@ export default function TaskFormFields({ form, setForm, employees = [], prioriti
 
       {/* Step 2 — Employees */}
       <h6 className="text-uppercase text-muted fw-semibold mb-3" style={{ fontSize:'.7rem', letterSpacing:'.1em' }}>Step 2 — Assign Employees</h6>
+      {teams.length > 0 && (
+        <div className="mb-3">
+          <label className="form-label small fw-semibold">Add a team</label>
+          <select className="form-select form-select-sm" defaultValue="" onChange={applyTeam} style={{ maxWidth: 280 }}>
+            <option value="">Select a team to tick its members…</option>
+            {teams.map(t => (
+              <option key={t.team_id} value={t.team_id}>{t.team_name}</option>
+            ))}
+          </select>
+        </div>
+      )}
       <div className="mb-4 row g-2" style={{ maxHeight: 260, overflowY:'auto' }}>
         {employees.map(emp => (
           <div key={emp.employee_id} className="col-md-6">

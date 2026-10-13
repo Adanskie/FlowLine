@@ -15,6 +15,7 @@ import AdminEmployeeNew  from './pages/admin/employees/EmployeeForm';
 import AdminEmployeeEdit from './pages/admin/employees/EmployeeEdit';
 import AdminEmployeeView from './pages/admin/employees/EmployeeView';
 import AdminDepartments  from './pages/admin/Departments';
+import AdminTeams        from './pages/admin/Teams';
 import AdminPositions    from './pages/admin/Positions';
 import AdminTaskBoard    from './pages/admin/tasks/TaskBoard';
 import AdminTaskNew      from './pages/admin/tasks/TaskForm';
@@ -72,6 +73,7 @@ export default function App() {
               <Route path="/admin/employees/:id"  element={<AdminEmployeeView />} />
               <Route path="/admin/employees/:id/edit" element={<AdminEmployeeEdit />} />
               <Route path="/admin/departments"    element={<AdminDepartments />} />
+              <Route path="/admin/teams"          element={<AdminTeams />} />
               <Route path="/admin/positions"      element={<AdminPositions />} />
               <Route path="/admin/tasks"          element={<AdminTaskBoard />} />
               <Route path="/admin/tasks/new"      element={<AdminTaskNew />} />

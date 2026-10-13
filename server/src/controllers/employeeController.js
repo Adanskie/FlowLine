@@ -5,6 +5,7 @@ const { log } = require('../lib/activityLog');
 const include = {
   department: true,
   position: true,
+  team: true,
   user: { include: { role: true } }
 };
 
@@ -32,7 +33,7 @@ const show = async (req, res) => {
 
 const store = async (req, res) => {
   const { first_name, last_name, email, phone, department_id, position_id, supervisor_id,
-          employment_type, hire_date, role_id, username, password } = req.body;
+          employment_type, hire_date, role_id, username, password, team_id } = req.body;
 
   const exists = await prisma.employee.findUnique({ where: { email } });
   if (exists) return res.status(409).json({ error: 'Email already in use.' });
@@ -48,6 +49,7 @@ const store = async (req, res) => {
       department_id: department_id ? +department_id : null,
       position_id:   position_id   ? +position_id   : null,
       supervisor_id: supervisor_id ? +supervisor_id : null,
+      team_id:       team_id       ? +team_id       : null,
       employment_type, hire_date: hire_date ? new Date(hire_date) : null,
     }
   });
@@ -68,7 +70,7 @@ const store = async (req, res) => {
 
 const update = async (req, res) => {
   const { first_name, last_name, email, phone, department_id, position_id, supervisor_id,
-          employment_type, hire_date, status, role_id, username, password } = req.body;
+          employment_type, hire_date, status, role_id, username, password, team_id } = req.body;
 
   const emp = await prisma.employee.findUnique({ where: { employee_id: +req.params.id }, include: { user: true } });
   if (!emp || emp.is_deleted) return res.status(404).json({ error: 'Employee not found.' });
@@ -82,6 +84,7 @@ const update = async (req, res) => {
       department_id: department_id ? +department_id : null,
       position_id:   position_id   ? +position_id   : null,
       supervisor_id: supervisor_id ? +supervisor_id : null,
+      team_id:       team_id       ? +team_id       : null,
       employment_type, hire_date: hire_date ? new Date(hire_date) : null,
     }
   });

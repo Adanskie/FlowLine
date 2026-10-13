@@ -1,11 +1,17 @@
+import { useState } from 'react';
 import useFetch from '../../hooks/useFetch';
+import api from '../../api/axios';
 import Spinner from '../../components/ui/Spinner';
+import Alert from '../../components/ui/Alert';
+import downloadFile from '../../utils/downloadFile';
 
 export default function ManagerFiles() {
   const { data: files, loading } = useFetch('/files');
+  const [dlError, setDlError] = useState('');
   return (
     <>
       <div className="page-heading mb-4">Task Files</div>
+      <Alert type="danger" message={dlError} onClose={() => setDlError('')} />
       <div className="card border-0 shadow-sm">
         {loading ? <Spinner /> : (
           <div className="table-responsive">
@@ -20,7 +26,7 @@ export default function ManagerFiles() {
                       <td><span className="badge bg-secondary-subtle text-secondary">{f.file_type?.toUpperCase() ?? '?'}</span></td>
                       <td>{f.task?.task_title ?? '—'}</td>
                       <td className="text-muted">{new Date(f.uploaded_at).toLocaleDateString()}</td>
-                      <td><a href={`/api/files/${f.attachment_id}/download`} className="btn btn-sm btn-outline-primary py-0 px-2"><i className="bi bi-download"></i></a></td>
+                      <td><button onClick={() => downloadFile(api, f.attachment_id, f.file_name, setDlError)} className="btn btn-sm btn-outline-primary py-0 px-2"><i className="bi bi-download"></i></button></td>
                     </tr>
                   ))
                 }

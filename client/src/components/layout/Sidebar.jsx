@@ -58,6 +58,7 @@ export default function Sidebar({ unread = 0 }) {
           <Section label="Organization" />
           <NavItem to="/admin/employees"    icon="bi-people-fill"         label="Employees" />
           <NavItem to="/admin/departments"  icon="bi-building"            label="Departments" />
+          <NavItem to="/admin/teams"        icon="bi-people"              label="Teams" />
           <NavItem to="/admin/positions"    icon="bi-briefcase-fill"      label="Positions" />
           <Section label="Workflow" />
           <NavItem to="/admin/tasks"        icon="bi-kanban-fill"         label="Task Board" />
