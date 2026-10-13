@@ -1,0 +1,49 @@
+<div class="card-header" style="margin-bottom:16px">
+  <div class="d-flex align-center gap-2" style="flex-wrap:wrap">
+    <form method="GET" action="/admin/tasks" class="d-flex gap-2" style="flex-wrap:wrap">
+      <input type="text" name="search" class="form-control" placeholder="Search tasks…" value="<%= query.search||'' %>" style="max-width:220px"/>
+      <select name="stage_id" class="form-control" style="max-width:160px">
+        <option value="">All Stages</option>
+        <% stages.forEach(s=>{ %><option value="<%= s.stage_id %>" <%= query.stage_id==s.stage_id?'selected':'' %>><%= s.stage_name %></option><% }) %>
+      </select>
+      <select name="priority_id" class="form-control" style="max-width:140px">
+        <option value="">All Priorities</option>
+        <% priorities.forEach(p=>{ %><option value="<%= p.priority_id %>" <%= query.priority_id==p.priority_id?'selected':'' %>><%= p.priority_name %></option><% }) %>
+      </select>
+      <button type="submit" class="btn btn-secondary btn-sm"><i class="fa-solid fa-magnifying-glass"></i> Filter</button>
+      <a href="/admin/tasks" class="btn btn-secondary btn-sm">Clear</a>
+    </form>
+    <a href="/admin/tasks/new" class="btn btn-primary btn-sm" style="margin-left:auto"><i class="fa-solid fa-plus"></i> New Task</a>
+  </div>
+</div>
+
+<div class="kanban">
+  <% Object.keys(grouped).forEach(stageName => { %>
+  <div class="kanban-col">
+    <div class="kanban-col-header">
+      <%= stageName %> <span class="badge badge-progress"><%= grouped[stageName].length %></span>
+    </div>
+    <% if (grouped[stageName].length === 0) { %>
+      <div class="empty-state" style="padding:20px"><i class="fa-solid fa-inbox"></i><p>Empty</p></div>
+    <% } %>
+    <% grouped[stageName].forEach(t => { %>
+    <a href="/admin/tasks/<%= t.task_id %>" style="text-decoration:none;color:inherit">
+      <div class="kanban-card">
+        <div class="task-title"><%= t.task_title %></div>
+        <div class="task-meta">
+          <%- priorityBadge(t.priority ? t.priority.priority_name : '') %>
+          <span class="text-muted"><i class="fa-regular fa-calendar"></i> <%= t.due_date ? new Date(t.due_date).toLocaleDateString() : '—' %></span>
+        </div>
+        <% if (t.assignments && t.assignments.length) { %>
+        <div style="margin-top:8px;font-size:.78rem;color:#6b7280">
+          <i class="fa-solid fa-users"></i>
+          <%= t.assignments.slice(0,3).map(a=>`${a.employee.first_name} ${a.employee.last_name[0]}.`).join(', ') %>
+          <% if(t.assignments.length > 3){ %> +<%= t.assignments.length-3 %><% } %>
+        </div>
+        <% } %>
+      </div>
+    </a>
+    <% }) %>
+  </div>
+  <% }) %>
+</div>

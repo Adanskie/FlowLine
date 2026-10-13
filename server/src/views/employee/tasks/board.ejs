@@ -1,0 +1,21 @@
+<div class="kanban">
+  <% Object.keys(grouped).forEach(stageName=>{ %>
+  <div class="kanban-col">
+    <div class="kanban-col-header">
+      <%= stageName %> <span class="badge badge-progress"><%= grouped[stageName].length %></span>
+    </div>
+    <% if (!grouped[stageName].length) { %><div class="empty-state" style="padding:20px"><i class="fa-solid fa-inbox"></i><p>Empty</p></div><% } %>
+    <% grouped[stageName].forEach(t=>{ %>
+    <a href="/employee/tasks/<%= t.task_id %>" style="text-decoration:none;color:inherit">
+      <div class="kanban-card">
+        <div class="task-title"><%= t.task_title %></div>
+        <div class="task-meta">
+          <%- priorityBadge(t.priority ? t.priority.priority_name : '') %>
+          <span class="text-muted"><%= t.due_date ? new Date(t.due_date).toLocaleDateString() : '—' %></span>
+        </div>
+      </div>
+    </a>
+    <% }) %>
+  </div>
+  <% }) %>
+</div>

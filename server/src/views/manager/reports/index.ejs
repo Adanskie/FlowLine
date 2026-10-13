@@ -1,0 +1,35 @@
+<form method="GET" action="/manager/reports" class="card d-flex gap-2 align-center" style="flex-wrap:wrap;margin-bottom:16px;padding:14px 20px">
+  <div class="form-group mb-0"><label class="form-label">From</label><input type="date" name="date_from" class="form-control" value="<%= query.date_from||dateFrom %>"/></div>
+  <div class="form-group mb-0"><label class="form-label">To</label><input type="date" name="date_to" class="form-control" value="<%= query.date_to||dateTo %>"/></div>
+  <div style="margin-top:16px">
+    <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+    <a href="/manager/reports" class="btn btn-secondary btn-sm">Reset</a>
+    <a href="/manager/reports/export/excel" class="btn btn-success btn-sm"><i class="fa-solid fa-file-excel"></i> Excel</a>
+  </div>
+</form>
+
+<div class="kpi-grid">
+  <div class="kpi-card primary"><div class="kpi-label">Total Tasks</div><div class="kpi-value"><%= totalTasks %></div></div>
+  <div class="kpi-card success"><div class="kpi-label">Completed</div><div class="kpi-value"><%= completedTasks %></div></div>
+  <div class="kpi-card danger"><div class="kpi-label">Overdue</div><div class="kpi-value"><%= overdueTasks %></div></div>
+  <div class="kpi-card info"><div class="kpi-label">Completion Rate</div><div class="kpi-value"><%= completionRate %>%</div></div>
+</div>
+
+<div class="card">
+  <div class="card-header"><span class="card-title">Employee Performance</span></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Employee</th><th>Assigned</th><th>Completed</th><th>Overdue</th><th>Rate</th></tr></thead>
+      <tbody>
+        <% performance.forEach(p=>{ %>
+        <tr>
+          <td><%= p.employee.first_name %> <%= p.employee.last_name %></td>
+          <td><%= p.assigned %></td><td><%= p.completed %></td>
+          <td><% if(p.overdue>0){ %><span class="badge badge-overdue"><%= p.overdue %></span><% }else{ %>0<% } %></td>
+          <td><%= p.completion_rate %>%</td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>

@@ -1,0 +1,124 @@
+<div class="card" style="max-width:800px">
+  <div class="card-header">
+    <span class="card-title"><%= title %></span>
+    <a href="/admin/employees" class="btn btn-secondary btn-sm"><i class="fa-solid fa-arrow-left"></i> Back</a>
+  </div>
+
+  <form method="POST" action="<%= action %>" enctype="multipart/form-data">
+    <% if (typeof method !== 'undefined' && method === 'POST' && action.includes('_method=PUT')) { %>
+      <input type="hidden" name="_method" value="PUT"/>
+    <% } %>
+
+    <h4 style="margin-bottom:12px;font-size:.95rem;color:#4f46e5">Personal Information</h4>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">First Name *</label>
+        <input type="text" name="first_name" class="form-control" value="<%= employee.first_name||'' %>" required/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Last Name *</label>
+        <input type="text" name="last_name" class="form-control" value="<%= employee.last_name||'' %>" required/>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Email *</label>
+        <input type="email" name="email" class="form-control" value="<%= employee.email||'' %>" required/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Phone</label>
+        <input type="text" name="phone" class="form-control" value="<%= employee.phone||'' %>"/>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Employment Type</label>
+        <select name="employment_type" class="form-control">
+          <option value="">Select…</option>
+          <option value="Full-time"  <%= employee.employment_type==='Full-time'?'selected':'' %>>Full-time</option>
+          <option value="Part-time"  <%= employee.employment_type==='Part-time'?'selected':'' %>>Part-time</option>
+          <option value="Contractual"<%= employee.employment_type==='Contractual'?'selected':'' %>>Contractual</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Hire Date</label>
+        <input type="date" name="hire_date" class="form-control" value="<%= employee.hire_date ? new Date(employee.hire_date).toISOString().split('T')[0] : '' %>"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Profile Photo</label>
+      <input type="file" name="profile_photo" class="form-control" accept="image/*"/>
+      <% if (employee.profile_photo_url) { %>
+        <img src="/uploads/<%= employee.profile_photo_url.split('/').pop() %>" style="width:60px;height:60px;object-fit:cover;border-radius:50%;margin-top:8px"/>
+      <% } %>
+    </div>
+
+    <h4 style="margin:20px 0 12px;font-size:.95rem;color:#4f46e5">Organisation</h4>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Department</label>
+        <select name="department_id" class="form-control">
+          <option value="">Select…</option>
+          <% departments.forEach(d => { %><option value="<%= d.department_id %>" <%= employee.department_id==d.department_id?'selected':'' %>><%= d.department_name %></option><% }) %>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Position</label>
+        <select name="position_id" class="form-control">
+          <option value="">Select…</option>
+          <% positions.forEach(p => { %><option value="<%= p.position_id %>" <%= employee.position_id==p.position_id?'selected':'' %>><%= p.position_name %></option><% }) %>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Team</label>
+        <select name="team_id" class="form-control">
+          <option value="">None</option>
+          <% teams.forEach(t => { %><option value="<%= t.team_id %>" <%= employee.team_id==t.team_id?'selected':'' %>><%= t.team_name %></option><% }) %>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Supervisor</label>
+        <select name="supervisor_id" class="form-control">
+          <option value="">None</option>
+          <% employees.forEach(e => { if(e.employee_id !== employee.employee_id){ %><option value="<%= e.employee_id %>" <%= employee.supervisor_id==e.employee_id?'selected':'' %>><%= e.first_name %> <%= e.last_name %></option><% }} ) %>
+        </select>
+      </div>
+    </div>
+
+    <h4 style="margin:20px 0 12px;font-size:.95rem;color:#4f46e5">System Account</h4>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Role *</label>
+        <select name="role_id" class="form-control" required>
+          <option value="">Select role…</option>
+          <% roles.forEach(r => { %><option value="<%= r.role_id %>" <%= (employee.user && employee.user.role_id==r.role_id)?'selected':'' %>><%= r.role_name %></option><% }) %>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Username *</label>
+        <input type="text" name="username" class="form-control" value="<%= employee.user ? employee.user.username : '' %>" <%= !employee.employee_id?'required':'' %>/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password <%= employee.employee_id ? '(leave blank to keep current)' : '*' %></label>
+      <input type="password" name="password" class="form-control" <%= !employee.employee_id?'required':'' %> minlength="6"/>
+    </div>
+
+    <% if (employee.employee_id) { %>
+    <div class="form-group">
+      <label class="form-label">Status</label>
+      <select name="status" class="form-control">
+        <option value="Active"   <%= employee.status==='Active'?'selected':'' %>>Active</option>
+        <option value="Inactive" <%= employee.status==='Inactive'?'selected':'' %>>Inactive</option>
+      </select>
+    </div>
+    <% } %>
+
+    <div class="d-flex gap-2 mt-2">
+      <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+      <a href="/admin/employees" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,34 @@
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Files</span>
+    <form method="GET" action="/admin/files" class="d-flex gap-2">
+      <input type="text" name="search" class="form-control" placeholder="Search file name…" value="<%= query.search||'' %>" style="max-width:240px"/>
+      <button type="submit" class="btn btn-secondary btn-sm"><i class="fa-solid fa-magnifying-glass"></i></button>
+      <a href="/admin/files" class="btn btn-secondary btn-sm">Clear</a>
+    </form>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>File</th><th>Task</th><th>Uploaded By</th><th>Date</th><th>Actions</th></tr></thead>
+      <tbody>
+        <% if (!files.length) { %>
+          <tr><td colspan="5"><div class="empty-state"><i class="fa-solid fa-folder-open"></i><p>No files found.</p></div></td></tr>
+        <% } %>
+        <% files.forEach(f=>{ %>
+        <tr>
+          <td><i class="fa-solid fa-file"></i> <%= f.file_name %></td>
+          <td><%= f.task ? f.task.task_title : '—' %></td>
+          <td><%= f.uploadedBy && f.uploadedBy.employee ? `${f.uploadedBy.employee.first_name} ${f.uploadedBy.employee.last_name}` : '—' %></td>
+          <td><%= new Date(f.uploaded_at).toLocaleDateString() %></td>
+          <td class="d-flex gap-2">
+            <a href="/admin/files/<%= f.attachment_id %>/download" class="btn btn-secondary btn-sm"><i class="fa-solid fa-download"></i></a>
+            <form method="POST" action="/admin/files/<%= f.attachment_id %>/delete" style="display:inline" onsubmit="return confirm('Delete?')">
+              <button type="submit" class="btn btn-danger btn-sm"><i class="fa-solid fa-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>

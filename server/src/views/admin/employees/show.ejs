@@ -1,0 +1,50 @@
+<div class="d-flex gap-2 mb-0" style="margin-bottom:16px">
+  <a href="/admin/employees" class="btn btn-secondary btn-sm"><i class="fa-solid fa-arrow-left"></i> Back</a>
+  <a href="/admin/employees/<%= emp.employee_id %>/edit" class="btn btn-primary btn-sm"><i class="fa-solid fa-pen"></i> Edit</a>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header"><span class="card-title">Profile</span></div>
+    <% if (emp.profile_photo_url) { %>
+      <img src="/uploads/<%= emp.profile_photo_url.split('/').pop() %>" style="width:80px;height:80px;border-radius:50%;object-fit:cover;margin-bottom:12px"/>
+    <% } else { %>
+      <div style="width:80px;height:80px;border-radius:50%;background:#4f46e5;color:#fff;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:700;margin-bottom:12px"><%= emp.first_name[0] %></div>
+    <% } %>
+    <table style="width:100%">
+      <tr><td class="text-muted">Name</td><td><strong><%= emp.first_name %> <%= emp.last_name %></strong></td></tr>
+      <tr><td class="text-muted">Email</td><td><%= emp.email %></td></tr>
+      <tr><td class="text-muted">Phone</td><td><%= emp.phone||'—' %></td></tr>
+      <tr><td class="text-muted">Department</td><td><%= emp.department ? emp.department.department_name : '—' %></td></tr>
+      <tr><td class="text-muted">Position</td><td><%= emp.position ? emp.position.position_name : '—' %></td></tr>
+      <tr><td class="text-muted">Team</td><td><%= emp.team ? emp.team.team_name : '—' %></td></tr>
+      <tr><td class="text-muted">Employment</td><td><%= emp.employment_type||'—' %></td></tr>
+      <tr><td class="text-muted">Hire Date</td><td><%= emp.hire_date ? new Date(emp.hire_date).toLocaleDateString() : '—' %></td></tr>
+      <tr><td class="text-muted">Status</td><td><%- statusBadge(emp.status) %></td></tr>
+      <tr><td class="text-muted">Role</td><td><%= emp.user && emp.user.role ? emp.user.role.role_name : '—' %></td></tr>
+      <tr><td class="text-muted">Username</td><td><%= emp.user ? emp.user.username : '—' %></td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Assigned Tasks</span></div>
+    <% if (!tasks.length) { %>
+      <p class="text-muted">No tasks assigned.</p>
+    <% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Title</th><th>Stage</th><th>Due</th></tr></thead>
+        <tbody>
+          <% tasks.forEach(t => { %>
+          <tr>
+            <td><a href="/admin/tasks/<%= t.task_id %>"><%= t.task_title %></a></td>
+            <td><%- stageBadge(t.stage ? t.stage.stage_name : '') %></td>
+            <td><%= t.due_date ? new Date(t.due_date).toLocaleDateString() : '—' %></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+  </div>
+</div>

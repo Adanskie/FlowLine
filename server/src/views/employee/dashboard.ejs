@@ -1,0 +1,25 @@
+<div class="kpi-grid">
+  <div class="kpi-card primary"><div class="kpi-label">Assigned Tasks</div><div class="kpi-value"><%= totalTasks %></div></div>
+  <div class="kpi-card success"><div class="kpi-label">Completed</div><div class="kpi-value"><%= completedCount %></div></div>
+  <div class="kpi-card danger"><div class="kpi-label">Overdue</div><div class="kpi-value"><%= overdueCount %></div></div>
+</div>
+
+<div class="card">
+  <div class="card-header"><span class="card-title">My Recent Tasks</span><a href="/employee/tasks" class="btn btn-primary btn-sm">View All</a></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Title</th><th>Stage</th><th>Priority</th><th>Due Date</th></tr></thead>
+      <tbody>
+        <% if (!recentTasks.length) { %><tr><td colspan="4" class="empty-state">No tasks yet.</td></tr><% } %>
+        <% recentTasks.forEach(t=>{ %>
+        <tr>
+          <td><a href="/employee/tasks/<%= t.task_id %>"><%= t.task_title %></a></td>
+          <td><%- stageBadge(t.stage ? t.stage.stage_name : '') %></td>
+          <td><%- priorityBadge(t.priority ? t.priority.priority_name : '') %></td>
+          <td><%= t.due_date ? new Date(t.due_date).toLocaleDateString() : '—' %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>

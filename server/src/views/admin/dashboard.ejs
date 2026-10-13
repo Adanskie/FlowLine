@@ -1,0 +1,78 @@
+<div class="kpi-grid">
+  <div class="kpi-card primary"><div class="kpi-label">Total Tasks</div><div class="kpi-value"><%= totalTasks %></div></div>
+  <div class="kpi-card success"><div class="kpi-label">Completed</div><div class="kpi-value"><%= completedCount %></div></div>
+  <div class="kpi-card danger"><div class="kpi-label">Overdue</div><div class="kpi-value"><%= overdueCount %></div></div>
+  <div class="kpi-card info"><div class="kpi-label">For Review</div><div class="kpi-value"><%= forReviewCount %></div></div>
+  <div class="kpi-card warning"><div class="kpi-label">Total Employees</div><div class="kpi-value"><%= totalEmployees %></div></div>
+  <div class="kpi-card success"><div class="kpi-label">Present Today</div><div class="kpi-value"><%= presentToday %></div></div>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header"><span class="card-title">Tasks by Stage</span></div>
+    <canvas id="stageChart" height="200"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">Completions (Last 7 Days)</span></div>
+    <canvas id="weeklyChart" height="200"></canvas>
+  </div>
+</div>
+
+<% if (teamWorkload.length > 0) { %>
+<div class="card mt-2">
+  <div class="card-header"><span class="card-title">Team Workload</span></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Employee</th><th>Active Tasks</th><th>Overdue</th></tr></thead>
+      <tbody>
+        <% teamWorkload.forEach(w => { %>
+        <tr>
+          <td><%= w.name %></td>
+          <td><span class="badge badge-progress"><%= w.active_tasks %></span></td>
+          <td><% if(w.overdue_tasks > 0){ %><span class="badge badge-overdue"><%= w.overdue_tasks %></span><% }else{ %>0<% } %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<% } %>
+
+<div class="card mt-2">
+  <div class="card-header">
+    <span class="card-title">Recent Tasks</span>
+    <a href="/admin/tasks" class="btn btn-primary btn-sm">View All</a>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Title</th><th>Stage</th><th>Priority</th><th>Due Date</th></tr></thead>
+      <tbody>
+        <% if (recentTasks.length === 0) { %>
+        <tr><td colspan="4" class="empty-state">No tasks yet.</td></tr>
+        <% } %>
+        <% recentTasks.forEach(t => { %>
+        <tr>
+          <td><a href="/admin/tasks/<%= t.task_id %>"><%= t.task_title %></a></td>
+          <td><%- stageBadge(t.stage ? t.stage.stage_name : '') %></td>
+          <td><%- priorityBadge(t.priority ? t.priority.priority_name : '') %></td>
+          <td><%= t.due_date ? new Date(t.due_date).toLocaleDateString() : '—' %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const stageCtx = document.getElementById('stageChart');
+new Chart(stageCtx, { type: 'doughnut', data: {
+  labels: [<%= stageCounts.map(s => `'${s.stage}'`).join(',') %>],
+  datasets: [{ data: [<%= stageCounts.map(s => s.count).join(',') %>], backgroundColor: ['#fde68a','#93c5fd','#c4b5fd','#6ee7b7','#fca5a5'] }]
+}, options: { plugins: { legend: { position: 'bottom' } } } });
+
+const weekCtx = document.getElementById('weeklyChart');
+new Chart(weekCtx, { type: 'line', data: {
+  labels: [<%= weeklyChart.map(d => `'${d.label}'`).join(',') %>],
+  datasets: [{ label: 'Completed', data: [<%= weeklyChart.map(d => d.count).join(',') %>], borderColor:'#4f46e5', backgroundColor:'rgba(79,70,229,.1)', fill:true, tension:.4 }]
+}, options: { scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } } });
+</script>

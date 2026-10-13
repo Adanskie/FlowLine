@@ -1,0 +1,19 @@
+<header class="topbar">
+  <span class="page-title"><%= title %></span>
+  <div class="topbar-right">
+    <% const base = user.role === 'Administrator' ? '/admin' : user.role === 'Manager' ? '/manager' : '/employee'; %>
+    <a href="<%= base %>/notifications" class="notif-btn" title="Notifications">
+      <i class="fa-solid fa-bell"></i>
+      <% if (user.unreadCount > 0) { %>
+        <span class="notif-badge"><%= user.unreadCount %></span>
+      <% } %>
+    </a>
+    <div class="user-chip">
+      <div class="avatar"><%= user.name ? user.name[0].toUpperCase() : 'U' %></div>
+      <div>
+        <div style="font-weight:600;font-size:.88rem"><%= user.name %></div>
+        <div style="font-size:.75rem;color:#6b7280"><%= user.role %></div>
+      </div>
+    </div>
+  </div>
+</header>

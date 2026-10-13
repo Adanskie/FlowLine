@@ -1,0 +1,105 @@
+<% const baseUrl = '/employee/tasks/' + task.task_id %>
+<div class="d-flex gap-2" style="margin-bottom:16px">
+  <a href="/employee/tasks" class="btn btn-secondary btn-sm"><i class="fa-solid fa-arrow-left"></i> Back</a>
+</div>
+
+<div class="grid-2">
+  <div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title"><%= task.task_title %></span>
+        <%- stageBadge(task.stage ? task.stage.stage_name : '') %>
+      </div>
+      <p class="text-muted" style="margin-bottom:12px"><%= task.task_description||'No description.' %></p>
+      <table style="width:100%;font-size:.88rem">
+        <tr><td class="text-muted" style="width:120px">Priority</td><td><%- priorityBadge(task.priority ? task.priority.priority_name : '') %></td></tr>
+        <tr><td class="text-muted">Due Date</td><td><%= task.due_date ? new Date(task.due_date).toLocaleDateString() : '—' %></td></tr>
+      </table>
+    </div>
+
+    <!-- Post Progress -->
+    <% if (task.stage && task.stage.stage_name !== 'Completed' && task.stage.stage_name !== 'For Review') { %>
+    <div class="card mt-2">
+      <div class="card-header"><span class="card-title">Post Progress Update</span></div>
+      <form method="POST" action="<%= baseUrl %>/progress">
+        <div class="form-group">
+          <label class="form-label">Progress: <span id="pctLabel"><%=(task.updates&&task.updates[0])?task.updates[0].progress_percent:0%>%</span></label>
+          <input type="range" name="progress_percent" class="form-control" min="0" max="100" step="5"
+            value="<%=(task.updates&&task.updates[0])?task.updates[0].progress_percent:0%>"
+            oninput="document.getElementById('pctLabel').textContent=this.value+'%'"/>
+        </div>
+        <div class="form-group">
+          <textarea name="update_message" class="form-control" rows="3" placeholder="Describe your progress…" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Save Progress</button>
+      </form>
+    </div>
+    <% } %>
+
+    <!-- Submit for Review -->
+    <% if (task.stage && task.stage.stage_name === 'In Progress') { %>
+    <div class="card mt-2">
+      <form method="POST" action="<%= baseUrl %>/submit-review" onsubmit="return confirm('Submit for review?')">
+        <button type="submit" class="btn btn-success" style="width:100%;justify-content:center">
+          <i class="fa-solid fa-paper-plane"></i> Submit for Review
+        </button>
+      </form>
+    </div>
+    <% } %>
+  </div>
+
+  <div>
+    <!-- Attachments -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">Attachments</span></div>
+      <% (task.attachments||[]).forEach(att=>{ %>
+        <div class="d-flex align-center gap-2" style="margin-bottom:8px;justify-content:space-between">
+          <span><i class="fa-solid fa-file"></i> <%= att.file_name %></span>
+          <a href="/employee/files/<%= att.attachment_id %>/download" class="btn btn-secondary btn-sm"><i class="fa-solid fa-download"></i></a>
+        </div>
+      <% }) %>
+      <form method="POST" action="<%= baseUrl %>/attachments" enctype="multipart/form-data" class="mt-2">
+        <div class="d-flex gap-2">
+          <input type="file" name="file" class="form-control" required/>
+          <button type="submit" class="btn btn-secondary btn-sm">Upload</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Comments -->
+    <div class="card mt-2">
+      <div class="card-header"><span class="card-title">Comments</span></div>
+      <% (task.comments||[]).forEach(c=>{ %>
+        <div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #f0f0f0">
+          <div class="d-flex gap-2 align-center" style="margin-bottom:3px">
+            <strong style="font-size:.88rem"><%= c.user.employee ? `${c.user.employee.first_name} ${c.user.employee.last_name}` : c.user.username %></strong>
+            <span class="text-muted"><%= new Date(c.created_at).toLocaleString() %></span>
+          </div>
+          <p style="font-size:.9rem"><%= c.comment_text %></p>
+        </div>
+      <% }) %>
+      <form method="POST" action="<%= baseUrl %>/comment" class="mt-2">
+        <div class="d-flex gap-2">
+          <input type="text" name="comment_text" class="form-control" placeholder="Add a comment…" required/>
+          <button type="submit" class="btn btn-primary btn-sm">Post</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Progress History -->
+    <% if (task.updates && task.updates.length) { %>
+    <div class="card mt-2">
+      <div class="card-header"><span class="card-title">Progress History</span></div>
+      <% task.updates.slice(0,5).forEach(u=>{ %>
+        <div style="margin-bottom:10px;font-size:.88rem">
+          <div class="d-flex align-center gap-2" style="justify-content:space-between">
+            <strong><%= u.progress_percent %>%</strong>
+            <span class="text-muted"><%= new Date(u.update_date).toLocaleString() %></span>
+          </div>
+          <p style="color:#374151"><%= u.update_message %></p>
+        </div>
+      <% }) %>
+    </div>
+    <% } %>
+  </div>
+</div>

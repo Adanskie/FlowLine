@@ -1,0 +1,84 @@
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header"><span class="card-title">Add Team</span></div>
+    <form method="POST" action="/admin/teams">
+      <div class="form-group"><label class="form-label">Team Name *</label><input type="text" name="team_name" class="form-control" required/></div>
+      <div class="form-group">
+        <label class="form-label">Department *</label>
+        <select name="department_id" class="form-control" required>
+          <option value="">Select…</option>
+          <% departments.forEach(d => { %><option value="<%= d.department_id %>"><%= d.department_name %></option><% }) %>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Team Lead</label>
+        <select name="team_lead_id" class="form-control">
+          <option value="">None</option>
+          <% employees.forEach(e => { %><option value="<%= e.employee_id %>"><%= e.first_name %> <%= e.last_name %></option><% }) %>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Add Team</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Teams (<%= teams.length %>)</span></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Team</th><th>Department</th><th>Lead</th><th>Members</th><th>Actions</th></tr></thead>
+        <tbody>
+          <% if (!teams.length) { %><tr><td colspan="5"><p class="text-muted">No teams yet.</p></td></tr><% } %>
+          <% teams.forEach(t => { %>
+          <tr>
+            <td><strong><%= t.team_name %></strong></td>
+            <td><%= t.department ? t.department.department_name : '—' %></td>
+            <td><%= t.teamLead ? `${t.teamLead.first_name} ${t.teamLead.last_name}` : '—' %></td>
+            <td><%= t.members ? t.members.length : 0 %></td>
+            <td>
+              <button class="btn btn-primary btn-sm" onclick="showEditTeam(<%= t.team_id %>,'<%= t.team_name.replace(/'/g,`\\'`) %>',<%= t.department_id %>,<%= t.team_lead_id||'null' %>)"><i class="fa-solid fa-pen"></i></button>
+              <form method="POST" action="/admin/teams/<%= t.team_id %>" style="display:inline" onsubmit="return confirm('Delete?')">
+                <input type="hidden" name="_method" value="DELETE"/>
+                <button type="submit" class="btn btn-danger btn-sm"><i class="fa-solid fa-trash"></i></button>
+              </form>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center">
+  <div class="card" style="max-width:440px;width:100%;margin:0">
+    <div class="card-header"><span class="card-title">Edit Team</span><button class="btn btn-secondary btn-sm" onclick="closeModal()">✕</button></div>
+    <form method="POST" id="editForm">
+      <input type="hidden" name="_method" value="PUT"/>
+      <div class="form-group"><label class="form-label">Name *</label><input type="text" name="team_name" id="editName" class="form-control" required/></div>
+      <div class="form-group">
+        <label class="form-label">Department *</label>
+        <select name="department_id" id="editDept" class="form-control" required>
+          <% departments.forEach(d => { %><option value="<%= d.department_id %>"><%= d.department_name %></option><% }) %>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Team Lead</label>
+        <select name="team_lead_id" id="editLead" class="form-control">
+          <option value="">None</option>
+          <% employees.forEach(e => { %><option value="<%= e.employee_id %>"><%= e.first_name %> <%= e.last_name %></option><% }) %>
+        </select>
+      </div>
+      <div class="d-flex gap-2"><button type="submit" class="btn btn-primary">Save</button><button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button></div>
+    </form>
+  </div>
+</div>
+<script>
+function showEditTeam(id, name, deptId, leadId) {
+  document.getElementById('editForm').action = '/admin/teams/' + id;
+  document.getElementById('editName').value  = name;
+  document.getElementById('editDept').value  = deptId;
+  document.getElementById('editLead').value  = leadId || '';
+  document.getElementById('editModal').style.display = 'flex';
+}
+function closeModal() { document.getElementById('editModal').style.display = 'none'; }
+</script>

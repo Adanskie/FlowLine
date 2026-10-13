@@ -1,0 +1,79 @@
+<form method="GET" action="/admin/reports" class="card d-flex gap-2 align-center" style="flex-wrap:wrap;margin-bottom:16px;padding:14px 20px">
+  <div class="form-group mb-0">
+    <label class="form-label">From</label>
+    <input type="date" name="date_from" class="form-control" value="<%= query.date_from||dateFrom %>"/>
+  </div>
+  <div class="form-group mb-0">
+    <label class="form-label">To</label>
+    <input type="date" name="date_to" class="form-control" value="<%= query.date_to||dateTo %>"/>
+  </div>
+  <div class="form-group mb-0">
+    <label class="form-label">Department</label>
+    <select name="department_id" class="form-control">
+      <option value="">All</option>
+      <% departments.forEach(d=>{ %><option value="<%= d.department_id %>" <%= query.department_id==d.department_id?'selected':'' %>><%= d.department_name %></option><% }) %>
+    </select>
+  </div>
+  <div class="form-group mb-0">
+    <label class="form-label">Employee</label>
+    <select name="employee_id" class="form-control">
+      <option value="">All</option>
+      <% employees.forEach(e=>{ %><option value="<%= e.employee_id %>" <%= query.employee_id==e.employee_id?'selected':'' %>><%= e.first_name %> <%= e.last_name %></option><% }) %>
+    </select>
+  </div>
+  <div style="margin-top:16px">
+    <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+    <a href="/admin/reports" class="btn btn-secondary btn-sm">Reset</a>
+    <a href="/admin/reports/export/excel?<%= Object.entries(query).map(([k,v])=>`${k}=${v}`).join('&') %>" class="btn btn-success btn-sm"><i class="fa-solid fa-file-excel"></i> Excel</a>
+  </div>
+</form>
+
+<div class="kpi-grid">
+  <div class="kpi-card primary"><div class="kpi-label">Total Tasks</div><div class="kpi-value"><%= totalTasks %></div></div>
+  <div class="kpi-card success"><div class="kpi-label">Completed</div><div class="kpi-value"><%= completedTasks %></div></div>
+  <div class="kpi-card danger"><div class="kpi-label">Overdue</div><div class="kpi-value"><%= overdueTasks %></div></div>
+  <div class="kpi-card info"><div class="kpi-label">Completion Rate</div><div class="kpi-value"><%= completionRate %>%</div></div>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header"><span class="card-title">Tasks by Stage</span></div>
+    <canvas id="stageChart" height="220"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">Tasks by Priority</span></div>
+    <canvas id="priorityChart" height="220"></canvas>
+  </div>
+</div>
+
+<div class="card mt-2">
+  <div class="card-header"><span class="card-title">Employee Performance</span></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Employee</th><th>Department</th><th>Assigned</th><th>Completed</th><th>Overdue</th><th>Rate</th></tr></thead>
+      <tbody>
+        <% if (!performance.length) { %><tr><td colspan="6" class="empty-state">No data.</td></tr><% } %>
+        <% performance.forEach(p=>{ %>
+        <tr>
+          <td><%= p.employee.first_name %> <%= p.employee.last_name %></td>
+          <td><%= p.employee.department ? p.employee.department.department_name : '—' %></td>
+          <td><%= p.assigned %></td>
+          <td><%= p.completed %></td>
+          <td><% if(p.overdue>0){ %><span class="badge badge-overdue"><%= p.overdue %></span><% }else{ %>0<% } %></td>
+          <td>
+            <div style="background:#e5e7eb;border-radius:4px;height:8px;width:100px">
+              <div style="background:var(--primary);height:8px;border-radius:4px;width:<%= p.completion_rate %>%"></div>
+            </div>
+            <small><%= p.completion_rate %>%</small>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+new Chart(document.getElementById('stageChart'),{ type:'doughnut', data:{ labels:[<%= stageCounts.map(s=>`'${s.stage}'`).join(',') %>], datasets:[{ data:[<%= stageCounts.map(s=>s.count).join(',') %>], backgroundColor:['#fde68a','#93c5fd','#c4b5fd','#6ee7b7','#fca5a5'] }] }, options:{ plugins:{ legend:{ position:'bottom' } } } });
+new Chart(document.getElementById('priorityChart'),{ type:'bar', data:{ labels:[<%= priorityCounts.map(p=>`'${p.priority}'`).join(',') %>], datasets:[{ label:'Tasks', data:[<%= priorityCounts.map(p=>p.count).join(',') %>], backgroundColor:['#6ee7b7','#fde68a','#fca5a5'] }] }, options:{ scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1 } } } } });
+</script>

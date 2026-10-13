@@ -1,0 +1,10 @@
+<% if (locals.success && success.length > 0) { %>
+  <% success.forEach(msg => { %>
+    <div class="alert alert-success"><i class="fa-solid fa-circle-check"></i> <%= msg %></div>
+  <% }) %>
+<% } %>
+<% if (locals.error && error.length > 0) { %>
+  <% error.forEach(msg => { %>
+    <div class="alert alert-error"><i class="fa-solid fa-circle-exclamation"></i> <%= msg %></div>
+  <% }) %>
+<% } %>

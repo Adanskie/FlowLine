@@ -1,0 +1,71 @@
+<nav class="sidebar">
+  <div class="brand">
+    <i class="fa-solid fa-water"></i> Flowline
+  </div>
+
+  <% const role = user && user.role; %>
+  <% const base = role === 'Administrator' ? '/admin' : role === 'Manager' ? '/manager' : '/employee'; %>
+
+  <% if (role === 'Administrator') { %>
+  <nav>
+    <span class="nav-section">Main</span>
+    <a href="/admin/dashboard" class="<%= currentPath === '/admin/dashboard' ? 'active' : '' %>"><i class="fa-solid fa-gauge"></i> Dashboard</a>
+
+    <span class="nav-section">People</span>
+    <a href="/admin/employees"   class="<%= currentPath.startsWith('/admin/employees') ? 'active' : '' %>"><i class="fa-solid fa-users"></i> Employees</a>
+    <a href="/admin/departments" class="<%= currentPath.startsWith('/admin/departments') ? 'active' : '' %>"><i class="fa-solid fa-building"></i> Departments</a>
+    <a href="/admin/teams"       class="<%= currentPath.startsWith('/admin/teams') ? 'active' : '' %>"><i class="fa-solid fa-people-group"></i> Teams</a>
+    <a href="/admin/positions"   class="<%= currentPath.startsWith('/admin/positions') ? 'active' : '' %>"><i class="fa-solid fa-briefcase"></i> Positions</a>
+
+    <span class="nav-section">Work</span>
+    <a href="/admin/tasks"      class="<%= currentPath.startsWith('/admin/tasks') ? 'active' : '' %>"><i class="fa-solid fa-list-check"></i> Tasks</a>
+    <a href="/admin/attendance" class="<%= currentPath.startsWith('/admin/attendance') ? 'active' : '' %>"><i class="fa-solid fa-calendar-check"></i> Attendance</a>
+    <a href="/admin/files"      class="<%= currentPath.startsWith('/admin/files') ? 'active' : '' %>"><i class="fa-solid fa-folder-open"></i> Files</a>
+
+    <span class="nav-section">Insights</span>
+    <a href="/admin/reports"        class="<%= currentPath.startsWith('/admin/reports') ? 'active' : '' %>"><i class="fa-solid fa-chart-bar"></i> Reports</a>
+    <a href="/admin/activity-logs"  class="<%= currentPath.startsWith('/admin/activity-logs') ? 'active' : '' %>"><i class="fa-solid fa-clock-rotate-left"></i> Activity Logs</a>
+    <a href="/admin/notifications"  class="<%= currentPath.startsWith('/admin/notifications') ? 'active' : '' %>">
+      <i class="fa-solid fa-bell"></i> Notifications
+      <% if (user.unreadCount > 0) { %><span class="badge badge-high" style="margin-left:auto"><%= user.unreadCount %></span><% } %>
+    </a>
+  </nav>
+
+  <% } else if (role === 'Manager') { %>
+  <nav>
+    <span class="nav-section">Main</span>
+    <a href="/manager/dashboard" class="<%= currentPath === '/manager/dashboard' ? 'active' : '' %>"><i class="fa-solid fa-gauge"></i> Dashboard</a>
+
+    <span class="nav-section">Work</span>
+    <a href="/manager/tasks"      class="<%= currentPath.startsWith('/manager/tasks') ? 'active' : '' %>"><i class="fa-solid fa-list-check"></i> Tasks</a>
+    <a href="/manager/attendance" class="<%= currentPath.startsWith('/manager/attendance') ? 'active' : '' %>"><i class="fa-solid fa-calendar-check"></i> Attendance</a>
+    <a href="/manager/files"      class="<%= currentPath.startsWith('/manager/files') ? 'active' : '' %>"><i class="fa-solid fa-folder-open"></i> Files</a>
+
+    <span class="nav-section">Insights</span>
+    <a href="/manager/reports"       class="<%= currentPath.startsWith('/manager/reports') ? 'active' : '' %>"><i class="fa-solid fa-chart-bar"></i> Reports</a>
+    <a href="/manager/notifications" class="<%= currentPath.startsWith('/manager/notifications') ? 'active' : '' %>">
+      <i class="fa-solid fa-bell"></i> Notifications
+      <% if (user.unreadCount > 0) { %><span class="badge badge-high" style="margin-left:auto"><%= user.unreadCount %></span><% } %>
+    </a>
+  </nav>
+
+  <% } else { %>
+  <nav>
+    <span class="nav-section">Main</span>
+    <a href="/employee/dashboard" class="<%= currentPath === '/employee/dashboard' ? 'active' : '' %>"><i class="fa-solid fa-gauge"></i> Dashboard</a>
+
+    <span class="nav-section">My Work</span>
+    <a href="/employee/tasks"      class="<%= currentPath.startsWith('/employee/tasks') ? 'active' : '' %>"><i class="fa-solid fa-list-check"></i> My Tasks</a>
+    <a href="/employee/attendance" class="<%= currentPath.startsWith('/employee/attendance') ? 'active' : '' %>"><i class="fa-solid fa-calendar-check"></i> Attendance</a>
+    <a href="/employee/files"      class="<%= currentPath.startsWith('/employee/files') ? 'active' : '' %>"><i class="fa-solid fa-folder-open"></i> Files</a>
+    <a href="/employee/notifications" class="<%= currentPath.startsWith('/employee/notifications') ? 'active' : '' %>">
+      <i class="fa-solid fa-bell"></i> Notifications
+      <% if (user.unreadCount > 0) { %><span class="badge badge-high" style="margin-left:auto"><%= user.unreadCount %></span><% } %>
+    </a>
+  </nav>
+  <% } %>
+
+  <div class="sidebar-footer">
+    <a href="/auth/logout"><i class="fa-solid fa-right-from-bracket"></i> Log out</a>
+  </div>
+</nav>

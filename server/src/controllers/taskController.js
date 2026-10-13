@@ -1,204 +1,403 @@
-const prisma  = require('../lib/prisma');
-const { log } = require('../lib/activityLog');
+const { Op } = require('sequelize');
+const {
+  Task, WorkflowStage, TaskPriority, TaskAssignment, TaskUpdate,
+  TaskStageHistory, TaskComment, Approval, Attachment,
+  Employee, User, Department, Position,
+} = require('../models');
+const { log }  = require('../lib/activityLog');
 const { send } = require('../lib/notify');
+const upload   = require('../middleware/upload');
 
-const taskInclude = {
-  stage: true, priority: true,
-  creator: { include: { employee: true } },
-  assignments: { include: { employee: { include: { position: true } } } },
-  updates:     { orderBy: { update_date: 'desc' } },
-  stageHistory:{ include: { changedBy: { include: { employee: true } }, oldStage: true, newStage: true }, orderBy: { changed_at: 'desc' } },
-  comments:    { where: { is_deleted: false }, include: { user: { include: { employee: true } } }, orderBy: { created_at: 'asc' } },
-  approvals:   { include: { approver: { include: { employee: true } } }, orderBy: { requested_at: 'desc' } },
-  attachments: { where: { is_deleted: false }, include: { uploadedBy: { include: { employee: true } } } },
-};
+// ── Shared include for full task detail ───────────────────────────────────────
+const taskDetailInclude = [
+  { model: WorkflowStage, as: 'stage' },
+  { model: TaskPriority,  as: 'priority' },
+  { model: User, as: 'creator', include: [{ model: Employee, as: 'employee' }] },
+  {
+    model: TaskAssignment, as: 'assignments',
+    include: [{ model: Employee, as: 'employee', include: [{ model: Position, as: 'position' }] }],
+  },
+  { model: TaskUpdate, as: 'updates', order: [['update_date', 'DESC']] },
+  {
+    model: TaskStageHistory, as: 'stageHistory',
+    include: [
+      { model: User, as: 'changedBy', include: [{ model: Employee, as: 'employee' }] },
+      { model: WorkflowStage, as: 'oldStage' },
+      { model: WorkflowStage, as: 'newStage' },
+    ],
+    order: [['changed_at', 'DESC']],
+  },
+  {
+    model: TaskComment, as: 'comments',
+    where: { is_deleted: false }, required: false,
+    include: [{ model: User, as: 'user', include: [{ model: Employee, as: 'employee' }] }],
+    order: [['created_at', 'ASC']],
+  },
+  {
+    model: Approval, as: 'approvals',
+    include: [{ model: User, as: 'approver', include: [{ model: Employee, as: 'employee' }] }],
+    order: [['requested_at', 'DESC']],
+  },
+  {
+    model: Attachment, as: 'attachments',
+    where: { is_deleted: false }, required: false,
+    include: [{ model: User, as: 'uploadedBy', include: [{ model: Employee, as: 'employee' }] }],
+  },
+];
 
-const index = async (req, res) => {
-  const { search, priority_id, stage_id, employee_id } = req.query;
+// ── Helper: get task filter by role ──────────────────────────────────────────
+const baseWhere = (user, query = {}) => {
   const where = { is_deleted: false };
+  if (user.role === 'Employee') where['$assignments.employee_id$'] = +user.employeeId;
+  if (user.role === 'Manager')  where.created_by_user_id = user.id;
+  if (query.search)      where.task_title   = { [Op.like]: `%${query.search}%` };
+  if (query.priority_id) where.priority_id  = +query.priority_id;
+  if (query.stage_id)    where.stage_id     = +query.stage_id;
+  return where;
+};
 
-  // Employees only see their own assigned tasks
-  if (req.user.role === 'Employee') {
-    where.assignments = { some: { employee_id: +req.user.employeeId } };
-  }
-  // Managers only see tasks they created
-  if (req.user.role === 'Manager') {
-    where.created_by_user_id = req.user.id;
-  }
+// ── Board (Kanban view) ───────────────────────────────────────────────────────
+const board = async (req, res) => {
+  const user   = req.session.user;
+  const where  = baseWhere(user, req.query);
+  const baseInclude = [
+    { model: WorkflowStage, as: 'stage' },
+    { model: TaskPriority,  as: 'priority' },
+    {
+      model: TaskAssignment, as: 'assignments',
+      include: [{ model: Employee, as: 'employee' }],
+    },
+  ];
 
-  if (search)      where.task_title = { contains: search };
-  if (priority_id) where.priority_id = +priority_id;
-  if (stage_id)    where.stage_id    = +stage_id;
-  if (employee_id) where.assignments = { some: { employee_id: +employee_id } };
+  const includeOpt = user.role === 'Employee'
+    ? [...baseInclude, { model: TaskAssignment, as: 'assignments', where: { employee_id: +user.employeeId }, required: true, include: [{ model: Employee, as: 'employee' }] }]
+    : baseInclude;
 
-  const tasks = await prisma.task.findMany({
-    where,
-    include: { stage: true, priority: true, assignments: { include: { employee: true } }, updates: { orderBy: { update_date: 'desc' }, take: 1 } },
-    orderBy: { created_at: 'desc' }
+  const [tasks, stages, priorities] = await Promise.all([
+    Task.findAll({ where, include: includeOpt, order: [['created_at', 'DESC']] }),
+    WorkflowStage.findAll({ order: [['step_order', 'ASC']] }),
+    TaskPriority.findAll(),
+  ]);
+
+  const grouped = {};
+  stages.forEach(s => { grouped[s.stage_name] = []; });
+  tasks.forEach(t => {
+    const sn = t.stage?.stage_name;
+    if (sn && grouped[sn] !== undefined) grouped[sn].push(t);
   });
-  res.json(tasks);
+
+  const rolePrefix = user.role === 'Administrator' ? 'admin' : user.role === 'Manager' ? 'manager' : 'employee';
+
+  res.render(`${rolePrefix}/tasks/board`, {
+    title: 'Task Board', grouped, stages, priorities, query: req.query,
+    user, success: req.flash('success'), error: req.flash('error'),
+  });
 };
 
+// ── New Form ──────────────────────────────────────────────────────────────────
+const newForm = async (req, res) => {
+  const user = req.session.user;
+  const [priorities, employees] = await Promise.all([
+    TaskPriority.findAll(),
+    Employee.findAll({ where: { is_deleted: false }, order: [['first_name', 'ASC']] }),
+  ]);
+  const rolePrefix = user.role === 'Administrator' ? 'admin' : 'manager';
+  res.render(`${rolePrefix}/tasks/form`, {
+    title: 'New Task', task: {}, priorities, employees,
+    action: `/${rolePrefix}/tasks`, method: 'POST',
+    user, error: req.flash('error'),
+  });
+};
+
+// ── Show ──────────────────────────────────────────────────────────────────────
 const show = async (req, res) => {
-  const task = await prisma.task.findUnique({ where: { task_id: +req.params.id }, include: taskInclude });
-  if (!task || task.is_deleted) return res.status(404).json({ error: 'Task not found.' });
-  res.json(task);
+  const user = req.session.user;
+  const task = await Task.findOne({
+    where: { task_id: +req.params.id, is_deleted: false },
+    include: taskDetailInclude,
+  });
+  if (!task) { req.flash('error', 'Task not found.'); return res.redirect('back'); }
+
+  const stages = await WorkflowStage.findAll({ order: [['step_order', 'ASC']] });
+  const canManage = user.role === 'Administrator' || user.role === 'Manager';
+  const rolePrefix = user.role === 'Administrator' ? 'admin' : user.role === 'Manager' ? 'manager' : 'employee';
+
+  res.render(`${rolePrefix}/tasks/show`, {
+    title: task.task_title, task, stages, canManage,
+    user, success: req.flash('success'), error: req.flash('error'),
+  });
 };
 
+// ── Edit Form ─────────────────────────────────────────────────────────────────
+const editForm = async (req, res) => {
+  const user = req.session.user;
+  const task = await Task.findOne({
+    where: { task_id: +req.params.id, is_deleted: false },
+    include: [{ model: TaskAssignment, as: 'assignments' }],
+  });
+  if (!task) { req.flash('error', 'Task not found.'); return res.redirect('back'); }
+
+  const [priorities, employees] = await Promise.all([
+    TaskPriority.findAll(),
+    Employee.findAll({ where: { is_deleted: false }, order: [['first_name', 'ASC']] }),
+  ]);
+
+  const rolePrefix = user.role === 'Administrator' ? 'admin' : 'manager';
+  res.render(`${rolePrefix}/tasks/form`, {
+    title: 'Edit Task', task, priorities, employees,
+    action: `/${rolePrefix}/tasks/${task.task_id}?_method=PUT`, method: 'POST',
+    user, error: req.flash('error'),
+  });
+};
+
+// ── Create ────────────────────────────────────────────────────────────────────
 const store = async (req, res) => {
+  const user = req.session.user;
   const { task_title, task_description, priority_id, start_date, due_date, employee_ids } = req.body;
-  const ids = Array.isArray(employee_ids) ? employee_ids.map(Number) : JSON.parse(employee_ids || '[]');
+  const rolePrefix = user.role === 'Administrator' ? 'admin' : 'manager';
 
-  const pendingStage = await prisma.workflowStage.findFirst({ where: { stage_name: 'Pending' } });
+  try {
+    const pendingStage = await WorkflowStage.findOne({ where: { stage_name: 'Pending' } });
+    const ids = Array.isArray(employee_ids) ? employee_ids.map(Number)
+              : employee_ids ? JSON.parse(employee_ids) : [];
 
-  const task = await prisma.task.create({
-    data: {
+    const task = await Task.create({
       stage_id: pendingStage.stage_id,
       task_title, task_description,
-      priority_id: +priority_id,
-      start_date:  start_date ? new Date(start_date) : null,
-      due_date:    new Date(due_date),
-      created_by_user_id: req.user.id,
+      priority_id:        +priority_id,
+      start_date:         start_date ? new Date(start_date) : null,
+      due_date:           new Date(due_date),
+      created_by_user_id: user.id,
+    });
+
+    await TaskStageHistory.create({
+      task_id: task.task_id, changed_by_user_id: user.id,
+      new_stage_id: pendingStage.stage_id, remarks: 'Task created.',
+    });
+
+    const notifyUserIds = [];
+    for (const empId of ids) {
+      await TaskAssignment.create({ task_id: task.task_id, employee_id: empId, assigned_by_user_id: user.id });
+      const emp = await Employee.findByPk(empId, { include: [{ model: User, as: 'user' }] });
+      if (emp?.user) notifyUserIds.push(emp.user.id);
     }
-  });
 
-  // Stage history
-  await prisma.taskStageHistory.create({
-    data: { task_id: task.task_id, changed_by_user_id: req.user.id, new_stage_id: pendingStage.stage_id, remarks: 'Task created.' }
-  });
-
-  // Assignments
-  const notifyUserIds = [];
-  for (const empId of ids) {
-    await prisma.taskAssignment.create({ data: { task_id: task.task_id, employee_id: empId, assigned_by_user_id: req.user.id } });
-    const emp = await prisma.employee.findUnique({ where: { employee_id: empId }, include: { user: true } });
-    if (emp?.user) notifyUserIds.push(emp.user.id);
-  }
-
-  // File attachments
-  if (req.files?.length) {
-    for (const file of req.files) {
-      await prisma.attachment.create({
-        data: { task_id: task.task_id, uploaded_by_user_id: req.user.id, file_name: file.originalname, file_path: `uploads/${file.filename}`, file_type: file.originalname.split('.').pop() }
-      });
+    if (req.files?.length) {
+      for (const file of req.files) {
+        await Attachment.create({
+          task_id: task.task_id, uploaded_by_user_id: user.id,
+          file_name: file.originalname, file_path: `uploads/${file.filename}`,
+          file_type: file.originalname.split('.').pop(),
+        });
+      }
     }
-  }
 
-  if (notifyUserIds.length) {
-    await send(notifyUserIds, 'assignment', 'New Task Assigned', `You have been assigned: "${task_title}".`, task.task_id, req.user.id);
-  }
+    if (notifyUserIds.length) {
+      await send(notifyUserIds, 'assignment', 'New Task Assigned', `You have been assigned: "${task_title}".`, task.task_id, user.id);
+    }
 
-  await log(req.user.id, 'assignment', `Created task: ${task_title}`, 'tasks', task.task_id);
-  res.status(201).json(task);
+    await log(user.id, 'create', `Created task: ${task_title}`, 'tasks', task.task_id);
+    req.flash('success', 'Task created.');
+    res.redirect(`/${rolePrefix}/tasks`);
+  } catch (e) {
+    req.flash('error', e.message);
+    res.redirect(`/${rolePrefix}/tasks/new`);
+  }
 };
 
+// ── Update ────────────────────────────────────────────────────────────────────
 const update = async (req, res) => {
+  const user = req.session.user;
+  const id   = +req.params.id;
   const { task_title, task_description, priority_id, start_date, due_date, employee_ids } = req.body;
-  const task = await prisma.task.findUnique({ where: { task_id: +req.params.id }, include: { assignments: true } });
-  if (!task || task.is_deleted) return res.status(404).json({ error: 'Not found.' });
+  const rolePrefix = user.role === 'Administrator' ? 'admin' : 'manager';
 
-  const updated = await prisma.task.update({
-    where: { task_id: +req.params.id },
-    data: { task_title, task_description, priority_id: +priority_id, start_date: start_date ? new Date(start_date) : null, due_date: new Date(due_date), updated_by_user_id: req.user.id }
-  });
+  try {
+    const task = await Task.findOne({
+      where: { task_id: id, is_deleted: false },
+      include: [{ model: TaskAssignment, as: 'assignments' }],
+    });
+    if (!task) { req.flash('error', 'Task not found.'); return res.redirect(`/${rolePrefix}/tasks`); }
 
-  // Sync assignments
-  if (employee_ids) {
-    const newIds = (Array.isArray(employee_ids) ? employee_ids : JSON.parse(employee_ids)).map(Number);
-    const existing = task.assignments.map(a => a.employee_id);
-    const toRemove = existing.filter(id => !newIds.includes(id));
-    const toAdd    = newIds.filter(id => !existing.includes(id));
-    if (toRemove.length) await prisma.taskAssignment.deleteMany({ where: { task_id: task.task_id, employee_id: { in: toRemove } } });
-    for (const empId of toAdd) {
-      await prisma.taskAssignment.create({ data: { task_id: task.task_id, employee_id: empId, assigned_by_user_id: req.user.id } });
+    await task.update({
+      task_title, task_description,
+      priority_id:       +priority_id,
+      start_date:        start_date ? new Date(start_date) : null,
+      due_date:          new Date(due_date),
+      updated_by_user_id: user.id,
+    });
+
+    if (employee_ids !== undefined) {
+      const newIds = (Array.isArray(employee_ids) ? employee_ids : JSON.parse(employee_ids || '[]')).map(Number);
+      const existing = task.assignments.map(a => a.employee_id);
+      const toRemove = existing.filter(eid => !newIds.includes(eid));
+      const toAdd    = newIds.filter(eid => !existing.includes(eid));
+      if (toRemove.length) await TaskAssignment.destroy({ where: { task_id: id, employee_id: { [Op.in]: toRemove } } });
+      for (const empId of toAdd) {
+        await TaskAssignment.create({ task_id: id, employee_id: empId, assigned_by_user_id: user.id });
+      }
     }
+
+    await log(user.id, 'update', `Updated task: ${task_title}`, 'tasks', id);
+    req.flash('success', 'Task updated.');
+    res.redirect(`/${rolePrefix}/tasks`);
+  } catch (e) {
+    req.flash('error', e.message);
+    res.redirect(`/${rolePrefix}/tasks/${id}/edit`);
   }
-
-  await log(req.user.id, 'update', `Updated task: ${task_title}`, 'tasks', +req.params.id);
-  res.json(updated);
 };
 
+// ── Delete ────────────────────────────────────────────────────────────────────
 const destroy = async (req, res) => {
-  await prisma.task.update({ where: { task_id: +req.params.id }, data: { is_deleted: true } });
-  await log(req.user.id, 'delete', `Deleted task id ${req.params.id}`, 'tasks', +req.params.id);
-  res.json({ message: 'Task deleted.' });
+  const user = req.session.user;
+  const rolePrefix = user.role === 'Administrator' ? 'admin' : 'manager';
+  await Task.update({ is_deleted: true }, { where: { task_id: +req.params.id } });
+  await log(user.id, 'delete', `Deleted task id ${req.params.id}`, 'tasks', +req.params.id);
+  req.flash('success', 'Task deleted.');
+  res.redirect(`/${rolePrefix}/tasks`);
 };
 
+// ── Change Stage (Admin/Manager) ──────────────────────────────────────────────
 const changeStage = async (req, res) => {
+  const user = req.session.user;
+  const id   = +req.params.id;
   const { stage_id, remarks } = req.body;
-  const task = await prisma.task.findUnique({ where: { task_id: +req.params.id }, include: { assignments: { include: { employee: { include: { user: true } } } } } });
-  const old  = task.stage_id;
-  await prisma.task.update({ where: { task_id: +req.params.id }, data: { stage_id: +stage_id, updated_by_user_id: req.user.id } });
-  await prisma.taskStageHistory.create({ data: { task_id: +req.params.id, changed_by_user_id: req.user.id, old_stage_id: old, new_stage_id: +stage_id, remarks } });
-  const stage = await prisma.workflowStage.findUnique({ where: { stage_id: +stage_id } });
+  const rolePrefix = user.role === 'Administrator' ? 'admin' : 'manager';
+
+  const task = await Task.findOne({
+    where: { task_id: id, is_deleted: false },
+    include: [{ model: TaskAssignment, as: 'assignments', include: [{ model: Employee, as: 'employee', include: [{ model: User, as: 'user' }] }] }],
+  });
+  if (!task) { req.flash('error', 'Task not found.'); return res.redirect('back'); }
+
+  const oldStageId = task.stage_id;
+  await task.update({ stage_id: +stage_id, updated_by_user_id: user.id });
+  await TaskStageHistory.create({ task_id: id, changed_by_user_id: user.id, old_stage_id: oldStageId, new_stage_id: +stage_id, remarks });
+
+  const stage = await WorkflowStage.findByPk(+stage_id);
   const uids  = task.assignments.map(a => a.employee?.user?.id).filter(Boolean);
-  if (uids.length) await send(uids, 'status', 'Task Stage Updated', `Task "${task.task_title}" moved to ${stage.stage_name}.`, +req.params.id, req.user.id);
-  await log(req.user.id, 'update', `Changed task ${req.params.id} to ${stage.stage_name}`, 'tasks', +req.params.id);
-  res.json({ message: `Stage changed to ${stage.stage_name}.` });
+  if (uids.length) await send(uids, 'status', 'Task Stage Updated', `Task "${task.task_title}" moved to ${stage.stage_name}.`, id, user.id);
+  await log(user.id, 'update', `Changed task ${id} to ${stage.stage_name}`, 'tasks', id);
+
+  req.flash('success', `Stage changed to ${stage.stage_name}.`);
+  res.redirect(`/${rolePrefix}/tasks/${id}`);
 };
 
+// ── Approve (Admin/Manager) ───────────────────────────────────────────────────
 const approve = async (req, res) => {
+  const user = req.session.user;
+  const id   = +req.params.id;
   const { approval_status, remarks } = req.body;
-  const task = await prisma.task.findUnique({ where: { task_id: +req.params.id }, include: { assignments: { include: { employee: { include: { user: true } } } } } });
+  const rolePrefix = user.role === 'Administrator' ? 'admin' : 'manager';
 
-  await prisma.approval.create({ data: { task_id: +req.params.id, approver_user_id: req.user.id, approval_status, remarks, approval_date: new Date() } });
+  const task = await Task.findOne({
+    where: { task_id: id, is_deleted: false },
+    include: [{ model: TaskAssignment, as: 'assignments', include: [{ model: Employee, as: 'employee', include: [{ model: User, as: 'user' }] }] }],
+  });
+  if (!task) { req.flash('error', 'Not found.'); return res.redirect('back'); }
 
-  const stageName  = approval_status === 'Approved' ? 'Completed' : 'In Progress';
-  const newStage   = await prisma.workflowStage.findFirst({ where: { stage_name: stageName } });
-  await prisma.task.update({ where: { task_id: +req.params.id }, data: { stage_id: newStage.stage_id, updated_by_user_id: req.user.id } });
-  await prisma.taskStageHistory.create({ data: { task_id: +req.params.id, changed_by_user_id: req.user.id, old_stage_id: task.stage_id, new_stage_id: newStage.stage_id, remarks: approval_status === 'Approved' ? 'Approved.' : 'Returned for revision.' } });
+  await Approval.create({ task_id: id, approver_user_id: user.id, approval_status, remarks, approval_date: new Date() });
+
+  const stageName = approval_status === 'Approved' ? 'Completed' : 'In Progress';
+  const newStage  = await WorkflowStage.findOne({ where: { stage_name: stageName } });
+  await task.update({ stage_id: newStage.stage_id, updated_by_user_id: user.id });
+  await TaskStageHistory.create({
+    task_id: id, changed_by_user_id: user.id,
+    old_stage_id: task.stage_id, new_stage_id: newStage.stage_id,
+    remarks: approval_status === 'Approved' ? 'Approved.' : 'Returned for revision.',
+  });
 
   const uids = task.assignments.map(a => a.employee?.user?.id).filter(Boolean);
-  if (uids.length) await send(uids, 'approval', 'Task Review Decision', `Task "${task.task_title}": ${approval_status}.${remarks ? ` Remarks: ${remarks}` : ''}`, +req.params.id, req.user.id);
-  await log(req.user.id, 'approval', `Reviewed task ${req.params.id}: ${approval_status}`, 'tasks', +req.params.id);
-  res.json({ message: `Task ${approval_status}.` });
+  if (uids.length) {
+    await send(uids, 'approval', 'Task Review Decision',
+      `Task "${task.task_title}": ${approval_status}.${remarks ? ` Remarks: ${remarks}` : ''}`, id, user.id);
+  }
+  await log(user.id, 'approval', `Reviewed task ${id}: ${approval_status}`, 'tasks', id);
+  req.flash('success', `Task ${approval_status}.`);
+  res.redirect(`/${rolePrefix}/tasks/${id}`);
 };
 
+// ── Submit for Review (Employee) ──────────────────────────────────────────────
 const submitForReview = async (req, res) => {
-  const task     = await prisma.task.findUnique({ where: { task_id: +req.params.id } });
-  const stage    = await prisma.workflowStage.findFirst({ where: { stage_name: 'For Review' } });
-  const oldStage = task.stage_id;
-  await prisma.task.update({ where: { task_id: +req.params.id }, data: { stage_id: stage.stage_id, updated_by_user_id: req.user.id } });
-  await prisma.taskStageHistory.create({ data: { task_id: +req.params.id, changed_by_user_id: req.user.id, old_stage_id: oldStage, new_stage_id: stage.stage_id, remarks: 'Submitted for review.' } });
-  await send(task.created_by_user_id, 'approval', 'Task Ready for Review', `Task "${task.task_title}" was submitted for review.`, +req.params.id, req.user.id);
-  await log(req.user.id, 'update', `Submitted task ${req.params.id} for review`, 'tasks', +req.params.id);
-  res.json({ message: 'Submitted for review.' });
+  const user = req.session.user;
+  const id   = +req.params.id;
+
+  const task  = await Task.findByPk(id);
+  if (!task) { req.flash('error', 'Not found.'); return res.redirect('back'); }
+  const stage = await WorkflowStage.findOne({ where: { stage_name: 'For Review' } });
+
+  await task.update({ stage_id: stage.stage_id, updated_by_user_id: user.id });
+  await TaskStageHistory.create({
+    task_id: id, changed_by_user_id: user.id,
+    old_stage_id: task.stage_id, new_stage_id: stage.stage_id, remarks: 'Submitted for review.',
+  });
+  await send([task.created_by_user_id], 'approval', 'Task Ready for Review',
+    `Task "${task.task_title}" was submitted for review.`, id, user.id);
+  await log(user.id, 'update', `Submitted task ${id} for review`, 'tasks', id);
+
+  req.flash('success', 'Submitted for review.');
+  res.redirect(`/employee/tasks/${id}`);
 };
 
+// ── Post Progress (Employee) ──────────────────────────────────────────────────
 const postProgress = async (req, res) => {
+  const user = req.session.user;
+  const id   = +req.params.id;
   const { update_message, progress_percent } = req.body;
-  const task = await prisma.task.findUnique({ where: { task_id: +req.params.id } });
 
-  await prisma.taskUpdate.create({ data: { task_id: +req.params.id, employee_id: +req.user.employeeId, update_message, progress_percent: +progress_percent } });
+  const task = await Task.findByPk(id);
+  if (!task) { req.flash('error', 'Not found.'); return res.redirect('back'); }
 
-  // Auto-move to In Progress if still Pending
-  const pending    = await prisma.workflowStage.findFirst({ where: { stage_name: 'Pending' } });
-  const inProgress = await prisma.workflowStage.findFirst({ where: { stage_name: 'In Progress' } });
+  await TaskUpdate.create({ task_id: id, employee_id: +user.employeeId, update_message, progress_percent: +progress_percent });
+
+  const pending    = await WorkflowStage.findOne({ where: { stage_name: 'Pending' } });
+  const inProgress = await WorkflowStage.findOne({ where: { stage_name: 'In Progress' } });
   if (task.stage_id === pending.stage_id) {
-    await prisma.task.update({ where: { task_id: +req.params.id }, data: { stage_id: inProgress.stage_id } });
-    await prisma.taskStageHistory.create({ data: { task_id: +req.params.id, changed_by_user_id: req.user.id, old_stage_id: pending.stage_id, new_stage_id: inProgress.stage_id, remarks: 'Progress update posted.' } });
+    await task.update({ stage_id: inProgress.stage_id });
+    await TaskStageHistory.create({
+      task_id: id, changed_by_user_id: user.id,
+      old_stage_id: pending.stage_id, new_stage_id: inProgress.stage_id, remarks: 'Progress update posted.',
+    });
   }
 
-  await log(req.user.id, 'update', `Posted progress on task ${req.params.id}`, 'task_updates', +req.params.id);
-  res.json({ message: 'Progress saved.' });
+  await log(user.id, 'update', `Posted progress on task ${id}`, 'task_updates', id);
+  req.flash('success', 'Progress saved.');
+  res.redirect(`/employee/tasks/${id}`);
 };
 
+// ── Add Comment ───────────────────────────────────────────────────────────────
 const addComment = async (req, res) => {
-  const comment = await prisma.taskComment.create({ data: { task_id: +req.params.id, user_id: req.user.id, comment_text: req.body.comment_text } });
-  res.status(201).json(comment);
+  const user = req.session.user;
+  const id   = +req.params.id;
+  await TaskComment.create({ task_id: id, user_id: user.id, comment_text: req.body.comment_text });
+  req.flash('success', 'Comment added.');
+  res.redirect('back');
 };
 
+// ── Delete Comment ────────────────────────────────────────────────────────────
 const deleteComment = async (req, res) => {
-  await prisma.taskComment.update({ where: { comment_id: +req.params.cid }, data: { is_deleted: true } });
-  res.json({ message: 'Comment removed.' });
+  await TaskComment.update({ is_deleted: true }, { where: { comment_id: +req.params.cid } });
+  req.flash('success', 'Comment removed.');
+  res.redirect('back');
 };
 
+// ── Upload Attachment ─────────────────────────────────────────────────────────
 const uploadAttachment = async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No file provided.' });
-  const att = await prisma.attachment.create({
-    data: { task_id: +req.params.id, uploaded_by_user_id: req.user.id, file_name: req.file.originalname, file_path: `uploads/${req.file.filename}`, file_type: req.file.originalname.split('.').pop() }
+  const user = req.session.user;
+  const id   = +req.params.id;
+  if (!req.file) { req.flash('error', 'No file provided.'); return res.redirect('back'); }
+  await Attachment.create({
+    task_id: id, uploaded_by_user_id: user.id,
+    file_name: req.file.originalname,
+    file_path: `uploads/${req.file.filename}`,
+    file_type: req.file.originalname.split('.').pop(),
   });
-  res.status(201).json(att);
+  req.flash('success', 'File uploaded.');
+  res.redirect('back');
 };
 
-module.exports = { index, show, store, update, destroy, changeStage, approve, submitForReview, postProgress, addComment, deleteComment, uploadAttachment };
+module.exports = {
+  board, newForm, show, editForm, store, update, destroy,
+  changeStage, approve, submitForReview, postProgress,
+  addComment, deleteComment, uploadAttachment,
+};

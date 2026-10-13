@@ -1,0 +1,36 @@
+<div class="card-header" style="margin-bottom:16px">
+  <div class="d-flex align-center gap-2" style="flex-wrap:wrap">
+    <form method="GET" action="/manager/tasks" class="d-flex gap-2" style="flex-wrap:wrap">
+      <input type="text" name="search" class="form-control" placeholder="Search tasks…" value="<%= query.search||'' %>" style="max-width:220px"/>
+      <select name="stage_id" class="form-control" style="max-width:160px">
+        <option value="">All Stages</option>
+        <% stages.forEach(s=>{ %><option value="<%= s.stage_id %>" <%= query.stage_id==s.stage_id?'selected':'' %>><%= s.stage_name %></option><% }) %>
+      </select>
+      <button type="submit" class="btn btn-secondary btn-sm"><i class="fa-solid fa-magnifying-glass"></i> Filter</button>
+      <a href="/manager/tasks" class="btn btn-secondary btn-sm">Clear</a>
+    </form>
+    <a href="/manager/tasks/new" class="btn btn-primary btn-sm" style="margin-left:auto"><i class="fa-solid fa-plus"></i> New Task</a>
+  </div>
+</div>
+
+<div class="kanban">
+  <% Object.keys(grouped).forEach(stageName=>{ %>
+  <div class="kanban-col">
+    <div class="kanban-col-header">
+      <%= stageName %> <span class="badge badge-progress"><%= grouped[stageName].length %></span>
+    </div>
+    <% if (!grouped[stageName].length) { %><div class="empty-state" style="padding:20px"><i class="fa-solid fa-inbox"></i><p>Empty</p></div><% } %>
+    <% grouped[stageName].forEach(t=>{ %>
+    <a href="/manager/tasks/<%= t.task_id %>" style="text-decoration:none;color:inherit">
+      <div class="kanban-card">
+        <div class="task-title"><%= t.task_title %></div>
+        <div class="task-meta">
+          <%- priorityBadge(t.priority ? t.priority.priority_name : '') %>
+          <span class="text-muted"><%= t.due_date ? new Date(t.due_date).toLocaleDateString() : '—' %></span>
+        </div>
+      </div>
+    </a>
+    <% }) %>
+  </div>
+  <% }) %>
+</div>

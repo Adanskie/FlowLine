@@ -1,4 +1,4 @@
-const prisma = require('./prisma');
+const { Notification } = require('../models');
 
 /**
  * Send a notification to one or more user IDs.
@@ -16,7 +16,7 @@ const send = async (userIds, type, title, message, referenceId = null, senderUse
     is_read: false,
   }));
   try {
-    await prisma.notification.createMany({ data });
+    await Notification.bulkCreate(data);
   } catch (e) {
     console.error('Notify error:', e.message);
   }

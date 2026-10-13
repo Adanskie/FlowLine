@@ -1,0 +1,56 @@
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header"><span class="card-title">Add Position</span></div>
+    <form method="POST" action="/admin/positions">
+      <div class="form-group"><label class="form-label">Position Name *</label><input type="text" name="position_name" class="form-control" required/></div>
+      <div class="form-group"><label class="form-label">Description</label><textarea name="description" class="form-control" rows="3"></textarea></div>
+      <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Add</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Positions (<%= positions.length %>)</span></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Name</th><th>Employees</th><th>Actions</th></tr></thead>
+        <tbody>
+          <% if (!positions.length) { %><tr><td colspan="3"><p class="text-muted">No positions yet.</p></td></tr><% } %>
+          <% positions.forEach(p => { %>
+          <tr>
+            <td><strong><%= p.position_name %></strong><% if(p.description){ %><br/><small class="text-muted"><%= p.description %></small><% } %></td>
+            <td><%= p.employees ? p.employees.length : 0 %></td>
+            <td>
+              <button class="btn btn-primary btn-sm" onclick="showEdit(<%= p.position_id %>,'<%= p.position_name.replace(/'/g,`\\'`) %>','<%= (p.description||'').replace(/'/g,`\\'`) %>')"><i class="fa-solid fa-pen"></i></button>
+              <form method="POST" action="/admin/positions/<%= p.position_id %>" style="display:inline" onsubmit="return confirm('Delete?')">
+                <input type="hidden" name="_method" value="DELETE"/>
+                <button type="submit" class="btn btn-danger btn-sm"><i class="fa-solid fa-trash"></i></button>
+              </form>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center">
+  <div class="card" style="max-width:440px;width:100%;margin:0">
+    <div class="card-header"><span class="card-title">Edit Position</span><button class="btn btn-secondary btn-sm" onclick="closeModal()">✕</button></div>
+    <form method="POST" id="editForm">
+      <input type="hidden" name="_method" value="PUT"/>
+      <div class="form-group"><label class="form-label">Name *</label><input type="text" name="position_name" id="editName" class="form-control" required/></div>
+      <div class="form-group"><label class="form-label">Description</label><textarea name="description" id="editDesc" class="form-control" rows="3"></textarea></div>
+      <div class="d-flex gap-2"><button type="submit" class="btn btn-primary">Save</button><button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button></div>
+    </form>
+  </div>
+</div>
+<script>
+function showEdit(id,name,desc){
+  document.getElementById('editForm').action='/admin/positions/'+id;
+  document.getElementById('editName').value=name;
+  document.getElementById('editDesc').value=desc;
+  document.getElementById('editModal').style.display='flex';
+}
+function closeModal(){document.getElementById('editModal').style.display='none';}
+</script>

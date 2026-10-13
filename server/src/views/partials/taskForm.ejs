@@ -1,0 +1,59 @@
+<%# Shared task create/edit form partial — include in role-specific form views %>
+<div class="card" style="max-width:760px">
+  <div class="card-header">
+    <span class="card-title"><%= title %></span>
+    <a href="javascript:history.back()" class="btn btn-secondary btn-sm"><i class="fa-solid fa-arrow-left"></i> Back</a>
+  </div>
+  <form method="POST" action="<%= action %>" enctype="multipart/form-data">
+    <% if (task.task_id) { %><input type="hidden" name="_method" value="PUT"/><% } %>
+
+    <div class="form-group">
+      <label class="form-label">Task Title *</label>
+      <input type="text" name="task_title" class="form-control" value="<%= task.task_title||'' %>" required/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <textarea name="task_description" class="form-control" rows="4"><%= task.task_description||'' %></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Priority *</label>
+        <select name="priority_id" class="form-control" required>
+          <option value="">Select…</option>
+          <% priorities.forEach(p => { %><option value="<%= p.priority_id %>" <%= task.priority_id==p.priority_id?'selected':'' %>><%= p.priority_name %></option><% }) %>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Due Date *</label>
+        <input type="date" name="due_date" class="form-control" value="<%= task.due_date ? new Date(task.due_date).toISOString().split('T')[0] : '' %>" required/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Start Date</label>
+      <input type="date" name="start_date" class="form-control" value="<%= task.start_date ? new Date(task.start_date).toISOString().split('T')[0] : '' %>"/>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Assign Employees</label>
+      <select name="employee_ids" class="form-control" multiple style="height:140px">
+        <% const assignedIds = (task.assignments||[]).map(a=>a.employee_id); %>
+        <% employees.forEach(e => { %>
+          <option value="<%= e.employee_id %>" <%= assignedIds.includes(e.employee_id)?'selected':'' %>><%= e.first_name %> <%= e.last_name %></option>
+        <% }) %>
+      </select>
+      <small class="text-muted">Hold Ctrl/Cmd to select multiple</small>
+    </div>
+
+    <% if (!task.task_id) { %>
+    <div class="form-group">
+      <label class="form-label">Attachments</label>
+      <input type="file" name="attachments" class="form-control" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.png,.jpg,.jpeg"/>
+    </div>
+    <% } %>
+
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+      <a href="javascript:history.back()" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>

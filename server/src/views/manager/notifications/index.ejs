@@ -1,0 +1,22 @@
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Notifications</span>
+    <form method="POST" action="/manager/notifications/read-all">
+      <button type="submit" class="btn btn-secondary btn-sm"><i class="fa-solid fa-check-double"></i> Mark All Read</button>
+    </form>
+  </div>
+  <% if (!notifications.length) { %><div class="empty-state"><i class="fa-solid fa-bell-slash"></i><p>No notifications.</p></div><% } %>
+  <% notifications.forEach(n=>{ %>
+  <div style="padding:14px 0;border-bottom:1px solid #f0f0f0;display:flex;gap:12px;align-items:flex-start">
+    <div style="width:38px;height:38px;border-radius:50%;background:<%= notifColor(n.notification_type) %>;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+      <i class="fa-solid <%= notifIcon(n.notification_type) %>" style="color:#fff"></i>
+    </div>
+    <div style="flex:1">
+      <div style="font-weight:600;font-size:.9rem"><%= n.title %></div>
+      <div style="font-size:.85rem;color:#374151;margin:3px 0"><%= n.message %></div>
+      <div class="text-muted"><%= new Date(n.created_at).toLocaleString() %></div>
+    </div>
+    <% if (!n.is_read) { %><span class="badge badge-high">New</span><% } %>
+  </div>
+  <% }) %>
+</div>

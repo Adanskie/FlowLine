@@ -1,19 +1,5 @@
-# Dependencies
 node_modules/
-
-# Environment variables — never commit real secrets
 .env
-server/.env
-client/.env
-
-# Build output
-dist/
-client/dist/
-
-# Logs
+uploads/
 *.log
-npm-debug.log*
-
-# OS files
 .DS_Store
-Thumbs.db
